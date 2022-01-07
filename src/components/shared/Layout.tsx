@@ -10,7 +10,7 @@ interface Props {
 
 const Layout = ({ children, protectedRoute }: Props) => {
   const content = (
-    <div className="max-w-4xl m-auto">
+    <div className="m-auto max-w-7xl">
       <Header />
 
       <main className="px-4 pt-4 pb-8 mt-12 bg-white rounded-lg shadow">

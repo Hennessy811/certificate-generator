@@ -1,9 +1,8 @@
 import React from "react"
 
-import { yupResolver } from "@hookform/resolvers/yup"
-import { useForm } from "react-hook-form"
-import * as yup from "yup"
+import csv from "csvtojson"
 
+import Editor from "@components/Editor/Editor"
 import Layout from "@components/shared/Layout"
 import trpc from "@utils/trpc"
 
@@ -23,153 +22,56 @@ const Error = () => {
   )
 }
 
-interface FormInputs {
-  destination: string
-  startDate: string
-  endDate: string
-  comment: string
-}
-
-const schema = yup
-  .object({
-    destination: yup.string().required().min(3),
-    startDate: yup.date().required(),
-    endDate: yup
-      .date()
-      .required()
-      .test("endDate", "End date must be after start date", function (value) {
-        return value ? value > this.parent.startDate : true
-      }),
-    comment: yup.string(),
-  })
-  .required()
-
-const CreateTripForm = ({
-  onSubmit,
-  isSubmitLoading,
-}: {
-  onSubmit: (data: FormInputs) => void
-  isSubmitLoading: boolean
-}) => {
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<FormInputs>({
-    resolver: yupResolver(schema),
-  })
-
-  const handleSubmitForm = (data: FormInputs) => {
-    onSubmit(data)
-    reset()
-  }
-
-  return (
-    <div className="px-2 py-4 my-4 border border-gray-100 rounded-md shadow-sm">
-      <h1 className="text-2xl font-bold text-gray-800">Create Trip</h1>
-      <br />
-
-      <form onSubmit={handleSubmit(handleSubmitForm)} className="flex flex-col">
-        <div className="">
-          <div className="text-lg font-medium">Destination</div>
-          <input
-            className="w-full p-2 my-2 border border-gray-300 rounded"
-            placeholder="Destination"
-            {...register("destination")}
-          />
-          <p className="text-sm text-red-500">{errors.destination?.message}</p>
-        </div>
-
-        <div>
-          <div className="text-lg font-medium">Start Date</div>
-
-          <input
-            className="w-full my-2 border border-gray-300 rounded"
-            type="date"
-            {...register("startDate")}
-          />
-          <p className="text-sm text-red-500">{errors.startDate?.message}</p>
-        </div>
-
-        <div>
-          <div className="text-lg font-medium">End Date</div>
-
-          <input
-            className="w-full my-2 border border-gray-300 rounded"
-            type="date"
-            {...register("endDate")}
-          />
-          <p className="text-sm text-red-500">{errors.endDate?.message}</p>
-        </div>
-
-        <div>
-          <div className="text-lg font-medium">Comment</div>
-
-          <input
-            className="w-full p-2 my-2 border border-gray-300 rounded"
-            placeholder="Comment"
-            {...register("comment")}
-          />
-        </div>
-
-        <button
-          className="px-4 py-2 mt-4 uppercase border border-gray-600 rounded"
-          type="submit"
-          disabled={isSubmitLoading}
-        >
-          {isSubmitLoading ? "Loading" : "Submit"}
-        </button>
-      </form>
-    </div>
-  )
-}
-
 function Home() {
   const utils = trpc.useContext()
-  const { data: trips, isLoading, isError } = trpc.useQuery(["trips.all"])
-  const createTripMutation = trpc.useMutation("trips.create", {
-    onSuccess: () => utils.invalidateQueries(["trips.all"]),
-  })
+  const [data, setData] = React.useState<Record<string, string | null>[]>([])
 
-  const handleCreateTrip = (data: FormInputs) => {
-    createTripMutation.mutateAsync(data)
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target?.files?.[0]
+    const reader = new FileReader()
+
+    reader.onload = () => {
+      const content = reader.result as string
+      csv().fromString(content).then(setData)
+    }
+
+    if (file) reader.readAsText(file)
   }
 
   return (
-    <Layout protectedRoute>
-      <h1 className="text-3xl font-semibold">My trips</h1>
+    <Layout>
+      <h1 className="text-3xl font-semibold">Design your certificate</h1>
 
       <hr />
 
-      {(isLoading || createTripMutation.isLoading) && <Loader />}
-      {isError && <Error />}
-      {trips && (
-        <div>
-          {trips.length === 0 && (
-            <div className="mt-6 font-mono text-lg text-center">
-              You have no planned trips yet. Want to create first?
-            </div>
-          )}
+      <div className="flex mt-4">
+        <input
+          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100"
+          type="file"
+          multiple={false}
+          accept="text/csv"
+          onChange={handleUpload}
+        />
+      </div>
 
-          <CreateTripForm
-            onSubmit={handleCreateTrip}
-            isSubmitLoading={createTripMutation.isLoading}
-          />
+      {data[0] && <Editor sampleRow={data[0]} />}
 
-          <div className="w-full my-12 bg-gray-400 rounded-full h-0.5"></div>
+      {!data[0] && (
+        <div className="mt-4">
+          <p>Select CSV file with sample data to get started</p>
 
-          {trips.map((trip) => (
-            <div
-              key={trip.id}
-              className="px-6 py-4 my-3 border-b border-gray-300 rounded-lg shadow"
-            >
-              <h2 className="text-xl">{trip.destination}</h2>
-            </div>
-          ))}
+          <p
+            onClick={() =>
+              setData([{ email: "johndoe2@mail.com", name: "John Doe" }])
+            }
+            className="underline pointer"
+          >
+            or try with demo data
+          </p>
         </div>
       )}
     </Layout>
   )
 }
+
 export default Home

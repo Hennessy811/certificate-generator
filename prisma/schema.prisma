@@ -8,7 +8,7 @@ generator client {
 }
 
 datasource db {
-  provider             = "mysql"
+  provider             = "sqlite"
   url                  = env("DATABASE_URL")
   shadowDatabaseUrl    = env("SHADOW_URL")
   referentialIntegrity = "prisma"
@@ -21,12 +21,12 @@ model Account {
   type               String
   provider           String
   providerAccountId  String
-  refresh_token      String? @db.Text
-  access_token       String? @db.Text
+  refresh_token      String?
+  access_token       String?
   expires_at         Int?
   token_type         String?
   scope              String?
-  id_token           String? @db.Text
+  id_token           String?
   session_state      String?
   oauth_token_secret String?
   oauth_token        String?
@@ -52,7 +52,6 @@ model User {
   image         String?
   accounts      Account[]
   sessions      Session[]
-  trips         Trip[]
   role          String    @default("user")
 }
 
@@ -62,17 +61,6 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
-}
-
-model Trip {
-  id          String   @id @default(cuid())
-  destination String
-  comment     String?
-  startDate   DateTime
-  endDate     DateTime
-
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId String
 }
 
 // User must be able to create an account and log in. (If a mobile application, this means that more users can use the app from the same phone).
